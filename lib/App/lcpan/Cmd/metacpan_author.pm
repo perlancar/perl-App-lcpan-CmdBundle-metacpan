@@ -8,6 +8,8 @@ use strict;
 use warnings;
 use Log::ger;
 
+use Perinci::Object;
+
 require App::lcpan;
 
 our %SPEC;
@@ -24,24 +26,34 @@ existence in local index database.
 _
     args => {
         %App::lcpan::common_args,
-        %App::lcpan::author_args,
+        %App::lcpan::authors_args,
     },
 };
 sub handle_cmd {
     my %args = @_;
-    my $author = $args{author};
 
     my $state = App::lcpan::_init(\%args, 'ro');
     my $dbh = $state->{dbh};
 
-    my ($cpanid) = $dbh->selectrow_array(
-        "SELECT cpanid FROM author WHERE cpanid=?", {}, uc $author);
-    defined $cpanid or return [404, "No such author '$author'"];
+    my $envres = envresmulti();
+    for my $author (@{ $args{authors} }) {
+        my ($cpanid) = $dbh->selectrow_array(
+            "SELECT cpanid FROM author WHERE cpanid=?", {}, uc $author);
+        defined $cpanid or do {
+            $envres->add_result(404, "No such author '$author'");
+            next;
+        };
 
-    require Browser::Open;
-    my $err = Browser::Open::open_browser("https://metacpan.org/author/$cpanid");
-    return [500, "Can't open browser"] if $err;
-    [200];
+        require Browser::Open;
+        my $url = "https://metacpan.org/author/$cpanid";
+        my $err = Browser::Open::open_browser($url);
+        if ($err) {
+            $envres->add_result(500, "Can't open browser for URL $url");
+        } else {
+            $envres->add_result(200, "OK");
+        }
+    }
+    $envres->as_struct;
 }
 
 1;

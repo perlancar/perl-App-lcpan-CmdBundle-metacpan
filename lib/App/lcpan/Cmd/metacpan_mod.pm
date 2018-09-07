@@ -8,6 +8,8 @@ use strict;
 use warnings;
 use Log::ger;
 
+use Perinci::Object;
+
 require App::lcpan;
 
 our %SPEC;
@@ -23,24 +25,34 @@ checked for existence in local index database.
 _
     args => {
         %App::lcpan::common_args,
-        %App::lcpan::mod_args,
+        %App::lcpan::mods_args,
     },
 };
 sub handle_cmd {
     my %args = @_;
-    my $mod = $args{module};
 
     my $state = App::lcpan::_init(\%args, 'ro');
     my $dbh = $state->{dbh};
 
-    my ($file_id) = $dbh->selectrow_array(
-        "SELECT file_id FROM module WHERE name=?", {}, $mod);
-    $file_id or return [404, "No such module '$mod'"];
+    my $envres = envresmulti();
+    for my $mod (@{ $args{modules} }) {
+        my ($file_id) = $dbh->selectrow_array(
+            "SELECT file_id FROM module WHERE name=?", {}, $mod);
+        $file_id or do {
+            $envres->add_result(404, "No such module '$mod'");
+            next;
+        };
 
-    require Browser::Open;
-    my $err = Browser::Open::open_browser("https://metacpan.org/pod/$mod");
-    return [500, "Can't open browser"] if $err;
-    [200];
+        require Browser::Open;
+        my $url = "https://metacpan.org/pod/$mod";
+        my $err = Browser::Open::open_browser($url);
+        if ($err) {
+            $envres->add_result(500, "Can't open browser for URL $url");
+        } else {
+            $envres->add_result(200, "OK");
+        }
+    }
+    $envres->as_struct;
 }
 
 1;

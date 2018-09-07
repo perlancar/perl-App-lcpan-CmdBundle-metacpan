@@ -8,6 +8,8 @@ use strict;
 use warnings;
 use Log::ger;
 
+use Perinci::Object;
+
 require App::lcpan;
 
 our %SPEC;
@@ -24,24 +26,34 @@ for existence in local index database.
 _
     args => {
         %App::lcpan::common_args,
-        %App::lcpan::dist_args,
+        %App::lcpan::dists_args,
     },
 };
 sub handle_cmd {
     my %args = @_;
-    my $dist = $args{dist};
 
     my $state = App::lcpan::_init(\%args, 'ro');
     my $dbh = $state->{dbh};
 
-    my ($file_id, $cpanid, $version) = $dbh->selectrow_array(
-        "SELECT file_id, cpanid, version FROM dist WHERE name=? AND is_latest", {}, $dist);
-    $file_id or return [404, "No such dist '$dist'"];
+    my $envres = envresmulti();
+    for my $dist (@{ $args{dists} }) {
+        my ($file_id, $cpanid, $version) = $dbh->selectrow_array(
+            "SELECT file_id, cpanid, version FROM dist WHERE name=? AND is_latest", {}, $dist);
+        $file_id or do {
+            $envres->add_result(404, "No such dist '$dist'");
+            next;
+        };
 
-    require Browser::Open;
-    my $err = Browser::Open::open_browser("https://metacpan.org/release/$cpanid/$dist-$version");
-    return [500, "Can't open browser"] if $err;
-    [200];
+        require Browser::Open;
+        my $url = "https://metacpan.org/release/$cpanid/$dist-$version";
+        my $err = Browser::Open::open_browser($url);
+        if ($err) {
+            $envres->add_result(500, "Can't open browser for URL $url");
+        } else {
+            $envres->add_result(200, "OK");
+        }
+    }
+    $envres->as_struct;
 }
 
 1;
