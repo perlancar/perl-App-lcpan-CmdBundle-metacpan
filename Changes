@@ -1,3 +1,8 @@
+0.007   2019-08-02  Released-By: PERLANCAR; Urgency: medium
+
+	- Add subcommand: metacpan-pod.
+
+
 0.006   2019-06-24  Released-By: PERLANCAR
 
 	- Add subcommand: metacpan-script.
