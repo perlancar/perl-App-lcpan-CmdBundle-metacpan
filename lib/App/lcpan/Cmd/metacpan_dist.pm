@@ -1,6 +1,8 @@
 package App::lcpan::Cmd::metacpan_dist;
 
+# AUTHORITY
 # DATE
+# DIST
 # VERSION
 
 use 5.010001;

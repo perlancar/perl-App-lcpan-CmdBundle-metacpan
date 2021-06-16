@@ -1,6 +1,8 @@
 package App::lcpan::Cmd::metacpan_pod;
 
+# AUTHORITY
 # DATE
+# DIST
 # VERSION
 
 use 5.010001;
